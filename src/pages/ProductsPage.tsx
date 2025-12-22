@@ -7,6 +7,8 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable, Column } from '@/components/shared/DataTable';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { ImageUpload } from '@/components/shared/ImageUpload';
+import { ProductThumbnail } from '@/components/shared/ProductThumbnail';
 import { useData } from '@/contexts/DataContext';
 import { Product } from '@/types';
 import { categories, units } from '@/data/mockData';
@@ -73,6 +75,8 @@ export default function ProductsPage() {
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [editMode, setEditMode] = useState(false);
+  const [productImage, setProductImage] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
@@ -89,6 +93,13 @@ export default function ProductsPage() {
   });
 
   const columns: Column<Product>[] = [
+    {
+      key: 'image',
+      header: 'Image',
+      render: (item) => (
+        <ProductThumbnail src={item.image || item.imageUrl} alt={item.name} size="sm" />
+      ),
+    },
     {
       key: 'name',
       header: 'Product Name',
@@ -157,6 +168,8 @@ export default function ProductsPage() {
   const handleCreate = () => {
     setEditMode(false);
     setSelectedProduct(null);
+    setProductImage(null);
+    setImageError(null);
     form.reset({
       name: '',
       category: '',
@@ -173,6 +186,8 @@ export default function ProductsPage() {
   const handleEdit = (product: Product) => {
     setEditMode(true);
     setSelectedProduct(product);
+    setProductImage(product.image || product.imageUrl || null);
+    setImageError(null);
     form.reset({
       name: product.name,
       category: product.category,
@@ -208,6 +223,15 @@ export default function ProductsPage() {
     }
   };
 
+  const handleImageChange = (value: string | null) => {
+    setProductImage(value);
+    setImageError(null);
+  };
+
+  const handleImageError = (error: string) => {
+    setImageError(error);
+  };
+
   const onSubmit = (data: ProductFormData) => {
     const productData = {
       name: data.name,
@@ -218,7 +242,9 @@ export default function ProductsPage() {
       supplier: data.supplier,
       status: data.status,
       description: data.description,
+      image: productImage,
     };
+
     if (editMode && selectedProduct) {
       updateProduct(selectedProduct.id, productData);
       toast({
@@ -233,6 +259,14 @@ export default function ProductsPage() {
       });
     }
     setIsFormOpen(false);
+    setProductImage(null);
+    form.reset();
+  };
+
+  const handleFormClose = () => {
+    setIsFormOpen(false);
+    setProductImage(null);
+    setImageError(null);
     form.reset();
   };
 
@@ -254,13 +288,28 @@ export default function ProductsPage() {
       />
 
       {/* Create/Edit Form Dialog */}
-      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="sm:max-w-lg animate-scale-in">
+      <Dialog open={isFormOpen} onOpenChange={handleFormClose}>
+        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto animate-scale-in">
           <DialogHeader>
             <DialogTitle>{editMode ? 'Edit Product' : 'Add New Product'}</DialogTitle>
           </DialogHeader>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+              {/* Image Upload */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Product Image</label>
+                <ImageUpload
+                  value={productImage}
+                  onChange={handleImageChange}
+                  onError={handleImageError}
+                  maxSize={2}
+                  accept={['image/png', 'image/jpeg', 'image/webp']}
+                />
+                {imageError && (
+                  <p className="text-sm text-destructive">{imageError}</p>
+                )}
+              </div>
+
               <FormField
                 control={form.control}
                 name="name"
@@ -426,7 +475,7 @@ export default function ProductsPage() {
               />
 
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>
+                <Button type="button" variant="outline" onClick={handleFormClose}>
                   Cancel
                 </Button>
                 <Button type="submit">{editMode ? 'Update Product' : 'Create Product'}</Button>
@@ -444,6 +493,19 @@ export default function ProductsPage() {
           </DialogHeader>
           {selectedProduct && (
             <div className="space-y-4">
+              {/* Product Image */}
+              {(selectedProduct.image || selectedProduct.imageUrl) && (
+                <div className="flex justify-center">
+                  <div className="overflow-hidden rounded-xl border bg-muted w-40 h-40">
+                    <img
+                      src={selectedProduct.image || selectedProduct.imageUrl || ''}
+                      alt={selectedProduct.name}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                </div>
+              )}
+              
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Product Name</p>

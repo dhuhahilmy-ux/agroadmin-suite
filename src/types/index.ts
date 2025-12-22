@@ -7,7 +7,8 @@ export interface Product {
   unit: string;
   supplier: string;
   status: 'active' | 'inactive' | 'low-stock';
-  image?: string;
+  image?: string | null;
+  imageUrl?: string | null;
   description?: string;
   createdAt: Date;
   updatedAt: Date;
